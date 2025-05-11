@@ -20,10 +20,29 @@ standardize a numeric vector, but infinite values are left unchanged. Rewrite
 ```{r}
 #| label: question-1
 
+library(dplyr)
+
 rescale01 <- function(x) {
   rng <- range(x, na.rm = TRUE, finite = TRUE)
+  
+  #making negative infinite and infinite values the min and max, respectively
+  x = case_when(x == -Inf ~ rng[1], x == Inf ~ rng[2],.default = x)
+  
   (x - rng[1]) / (rng[2] - rng[1])
+  
+  
+
+  
 }
+
+test_vect = c(1,-Inf,3,4,5,6,-7,8,Inf, NA)
+
+test_vect = case_when(test_vect == -Inf ~ 0, 
+                      test_vect == Inf ~ 1,.default = test_vect)
+
+test_vect
+
+rescale01(c(1,2,3,4,5,6,NA,-7,8,Inf, NA))
 ```
 
 **Question 2:** Write a function that accepts a vector of birthdates and 
@@ -40,7 +59,12 @@ age_in_years = function(date_vect) {
 }
 
 apple = c("01/01/2000", "10/23/2001")
+class(apple)
+apple
+
 banana = as.Date(apple, format = "%m/%d/%yy")
+banana
+
 class(apple)
 class(banana)
 age_in_years(c(banana))
@@ -58,13 +82,23 @@ library('e1071')
 
 
 variance_and_skewness = function(num_vec){
-  vs_df = data.frame(Variance = var(num_vec), Skewness =  skewness(num_vec))
+  
+  #if class(num_vec) != 'numeric'
+  
+  
+  v_s_df = data.frame(Variance = var(num_vec), Skewness =  skewness(num_vec))
   
   #return(var(num_vec), skewness(num_vec))
-  return(vs_df)
+  return(v_s_df)
 }
 
 variance_and_skewness(c(1,2,3,4,5,7,8,89,9,87,0))
+
+var(c(1,2,3,4,5,7,8,89,9,87,0))
+
+skewness(c(1,2,3,4,5,7,8,89,9,87,0))
+
+class(c(1,2,3,4,5,7,8,89,9,87,0))
 
 var(c(1,2,3,4,5,7,8,89,9,87,0))
 
@@ -79,11 +113,18 @@ vectors.
 
 ```{r}
 both_na = function(vec1, vec2){
+  
+  #check for if columns are same length
+  
+  #check for if vector is non-numeric
+  
   #returns number of positions (rows) that have NA in both vectors
+  
+  #adding up the NA status of column 1 and column 2, then filtering by col3 = 2
   return(data.frame(vec1, vec1, 
              row_num_nas = (is.na(vec1) + is.na(vec2))) %>% 
-    filter(row_num_nas == 2) %>%
-    summarise(N = n()) %>% as.numeric())
+    filter(row_num_nas == 2) %>% #  filtering by is.na(col1) + is.na(col2) = 2
+    summarise(N = n()) %>% as.numeric()) # counting number of columns with 2 NAs
   
   
 }
@@ -117,7 +158,54 @@ Exercise 1 or Exercise 2).
 
 ```{r}
 #| label: function-from-lab-2
+library(tidyverse)
 
+
+impute_missing = function(df, ..., impute_fun = mean) {
+  #add conditionals to make sure ... is a numeric variable
+  
+  newdf = df %>% 
+    mutate(across(c(...), ~ replace_na(data = .x, 
+                                       replace = impute_fun(.x, na.rm = TRUE))))
+  return(newdf)
+
+}
+
+apple1 = impute_missing(nycflights13::flights, 
+               arr_delay, 
+               dep_delay) 
+
+apple2 = impute_missing(nycflights13::flights, 
+               arr_delay, 
+               carrier)
+
+apple3 = impute_missing(nycflights13::flights, 
+               arr_delay, 
+               dep_delay, 
+               impute_fun = median)
+
+
+table(apple1$dep_delay)
+table(apple3$dep_delay)
+
+
+sum(is.na(apple$arr_delay))
+
+sum(is.na(apple$dep_delay))
+
+mean(apple1$dep_delay)
+median(apple3$dep_delay)
+
+var(nycflights13::flights$dep_delay, na.rm = TRUE)
+
+sum(is.na(nycflights13::flights$dep_delay))
+
+
+iris %>%
+  summarise(across(starts_with("Sepal"), ~ mean(.x, na.rm = TRUE)))
+
+test = c(1, NA, 4, 5)
+replace_na(data = test, replace = mean(test, na.rm = TRUE))
 
 
 ```
@@ -136,7 +224,7 @@ filter_severe = function(df = nycflights13::flights){
   #departure time delayed more than one hour (dep_delay > 60)
   
   
-  
+  return(df %>% filter(is.na(arr_time) == TRUE | dep_delay > 60))
   
   
 }
@@ -148,7 +236,8 @@ nycflights13::flights %>% filter(dep_delay > 60)
 nycflights13::flights %>% filter(is.na(arr_time) == TRUE)
 
 
-nycflights13::flights %>% filter(is.na(arr_time) == TRUE | dep_delay > 60)
+filter_severe(nycflights13::flights)
+
 
 
 ```
@@ -159,7 +248,7 @@ cancelled flights and the number of flights delayed by more than an hour.
 ```{r}
 #| label: question-7
 
-summarize_severe = function(){
+summarize_severe = function(df = nycflights13::flights){
   #use previous function
   
   #count number of cancelled flights
@@ -167,9 +256,12 @@ summarize_severe = function(){
   #two separate counts
   
   
-  
+  return(filter_severe(df) %>% summarise(N = n()))
   
 }
+
+
+summarize_severe(nycflights13::flights)
 
 ```
 
@@ -180,15 +272,18 @@ cancelled or delayed.
 ```{r}
 #| label: question-8
 
-filter_severe = function(df = nycflights13::flights){
+filter_severe = function(df = nycflights13::flights, hours = 1){
   #find all flights cancelled or delayed by more than one hour
-  #departure time delayed more than one hour (dep_delay > x, where x is user specified)
+  #departure time delayed more than one hour (dep_delay > 60)
   
   
-  
+  return(df %>% filter(is.na(arr_time) == TRUE | dep_delay > hours * 60))
   
   
 }
+
+filter_severe(nycflights13::flights, 1)
+
 
 ```
 
@@ -198,14 +293,32 @@ weather to compute the minimum, mean, and maximum, of a user supplied variable.
 ```{r}
 #| label: question-9
 
-summarize_weather = function(){
+summarize_weather = function(df = nycflights13::flights, num_var){
   #supply min, mean, max of supplied variable of a data frame
   #make sure variable is numeric
   
+  #make sure variable is numeric
+  
+  
+  #return(df %>% select(...) %>% 
+  #summarise(Minimum = min(..., na.rm = TRUE),
+   #         Mean = mean(..., na.rm = TRUE),
+    #        Maximum = max(..., na.rm = TRUE)))
+  
+  return(df %>% select({{num_var}}) %>%
+            summarise(Minimum = min({{num_var}}, na.rm = TRUE),
+            Mean = mean({{num_var}}, na.rm = TRUE),
+            Maximum = max({{num_var}}, na.rm = TRUE)))
 
 }
 
-nycflights13::flights
+summarize_weather(nycflights13::flights, dep_time)
+
+
+nycflights13::flights %>% select(dep_time) %>% 
+  summarise(Minimum = min(dep_time, na.rm = TRUE),
+            Mean = mean(dep_time, na.rm = TRUE),
+            Maximum = max(dep_time, na.rm = TRUE))
 
 ```
 
@@ -216,14 +329,19 @@ a decimal time (i.e. hours + (minutes / 60)).
 ```{r}
 #| label: question-10
 
-standardize_time = function(){
+standardize_time = function(df = nycflights13::flights, time_var){
   #user supplied variable that uses clock time into decimal time
   
   
-  
+  df %>% select({{time_var}}) %>% 
+    mutate(dec_time = floor({{time_var}}/100) * 60 + {{time_var}} %% 100)
   
   
 }
+
+nycflights13::flights %>% select(dep_time) %>% mutate(new_time = dep_time %% 100, new_time2 = floor(dep_time/100),
+                                                      final_time = floor(dep_time/100) * 60 + dep_time %% 100)
+standardize_time(nycflights13::flights, dep_time)
 
 ```
 
@@ -243,6 +361,29 @@ chart
 
 ```{r}
 #| label: question-11
+sorted_bars <- function(df, var) {
+  #vertical bar chart
+  
+  if {{var}} == "character"{
+  }
+  
+  
+  
+  #df %>% mutate({{cat_var}} := fct_infreq({{var}})) %>% 
+  #  ggplot(aes(x = {{var}})) +
+  #  geom_bar()
+}
+
+
+sorted_bars(nycflights13::flights, carrier)
+
+
+nycflights13::flights %>% mutate(carrier = fct_infreq(carrier))
+
+
+class(nycflights13::flights$carrier)
+
+class(nycflights13::flights$arr_time)
 
 ```
 
