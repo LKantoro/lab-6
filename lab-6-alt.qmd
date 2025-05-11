@@ -361,18 +361,23 @@ chart
 
 ```{r}
 #| label: question-11
-sorted_bars <- function(df, var) {
+
+library(rlang)
+
+sorted_bars <- function(df, var, name = englue("{{ var }}")) {
   #vertical bar chart
+  #if (class({{var}}) == "character") {
+  #  return(TRUE)
+  #}
   
-  if {{var}} == "character"{
-  }
+  return(df %>% mutate({{var}} := fct_infreq({{var}})) %>% 
+    ggplot(aes(x = {{var}})) + ggtitle(paste("Distribution of", {name})) + 
+    geom_bar())
+  
+}  
   
   
-  
-  #df %>% mutate({{cat_var}} := fct_infreq({{var}})) %>% 
-  #  ggplot(aes(x = {{var}})) +
-  #  geom_bar()
-}
+
 
 
 sorted_bars(nycflights13::flights, carrier)
@@ -396,6 +401,11 @@ dataset (built into `ggplot2`).
 
 ```{r}
 #| label: question-12
+
+ggplot2::mpg
+
+
+
 
 ```
 
