@@ -10,6 +10,15 @@ and 26. For this "alternative" lab you will complete the exercises from the
 textbook, with the option of submitting a pull request to the 
 [repository for the textbook solutions](https://github.com/mine-cetinkaya-rundel/r4ds-solutions/).
 
+```{r}
+#| label: load_libraries
+
+library(dplyr)
+library('e1071')
+library(tidyverse)
+library(rlang)
+```
+
 # Vector Functions
 
 **Question 1:** The `rescale01()` function below performs a min-max scaling to 
@@ -20,9 +29,16 @@ standardize a numeric vector, but infinite values are left unchanged. Rewrite
 ```{r}
 #| label: question-1
 
-library(dplyr)
 
 rescale01 <- function(x) {
+  if (class(x) != "numeric") {
+    stop("The provided vector is not numeric")
+  }
+  
+  if (length(x) < 2) {
+    stop("The provided vector is less than length 2")
+  }
+  
   rng <- range(x, na.rm = TRUE, finite = TRUE)
   
   #making negative infinite and infinite values the min and max, respectively
@@ -31,18 +47,22 @@ rescale01 <- function(x) {
   (x - rng[1]) / (rng[2] - rng[1])
   
   
-
-  
 }
+```
 
-test_vect = c(1,-Inf,3,4,5,6,-7,8,Inf, NA)
-
-test_vect = case_when(test_vect == -Inf ~ 0, 
-                      test_vect == Inf ~ 1,.default = test_vect)
-
-test_vect
-
+```{r}
+#testing with NA values
 rescale01(c(1,2,3,4,5,6,NA,-7,8,Inf, NA))
+
+#testing with negative infinity and negative inifinity values
+rescale01(c(1,2,3,-Inf,5,6,NA,-7,8,Inf, NA))
+
+#testing with character values
+rescale01(c(1,2,3,-Inf,5,'6',NA,-7,8,Inf, NA))
+
+#tseting with vector of length 1
+rescale01(c(1))
+
 ```
 
 **Question 2:** Write a function that accepts a vector of birthdates and 
@@ -78,32 +98,35 @@ numeric vector. Feel free to look up the definitions on Wikipedia or elsewhere!
 ```{r}
 #| label: question-3
 
-library('e1071')
-
-
 variance_and_skewness = function(num_vec){
   
-  #if class(num_vec) != 'numeric'
+  if (class(num_vec) != "numeric") {
+    stop("The provided vector is not numeric")
+  }
   
   
-  v_s_df = data.frame(Variance = var(num_vec), Skewness =  skewness(num_vec))
+  v_s_df = data.frame(Variance = var(num_vec, na.rm = TRUE), 
+                      Skewness = skewness(num_vec, na.rm = TRUE))
   
   #return(var(num_vec), skewness(num_vec))
   return(v_s_df)
 }
+```
 
+```{r}
+
+#testing with normal vector
 variance_and_skewness(c(1,2,3,4,5,7,8,89,9,87,0))
 
-var(c(1,2,3,4,5,7,8,89,9,87,0))
+#testing with a character vector
+variance_and_skewness(c(1,2,3,4,5,7,8,89,9,87,'0'))
 
-skewness(c(1,2,3,4,5,7,8,89,9,87,0))
+#testing with a vector of length 1
+variance_and_skewness(c(1))
 
-class(c(1,2,3,4,5,7,8,89,9,87,0))
+#testing with NA values
+variance_and_skewness(c(1,2,3,4,5,NA,8,89,9,87))
 
-var(c(1,2,3,4,5,7,8,89,9,87,0))
-
-
-skewness(c(1,2,3,4,5,7,8,89,9,87,0))
 ```
 
 **Question 4:** Write a function called `both_na()` which takes two vectors of
@@ -114,11 +137,18 @@ vectors.
 ```{r}
 both_na = function(vec1, vec2){
   
-  #check for if columns are same length
   
-  #check for if vector is non-numeric
+  #checking if columns are same length
+  if (length(vec1) != length(vec2)) {
+    stop("The provided vectors are not the same length")
+  }
   
-  #returns number of positions (rows) that have NA in both vectors
+  
+  #check for if a vector is non-numeric
+  if (class(vec1) != "numeric" | (class(vec2) != "numeric"))  {
+    stop("At least 1 provided vector is not numeric")
+  }
+  
   
   #adding up the NA status of column 1 and column 2, then filtering by col3 = 2
   return(data.frame(vec1, vec1, 
@@ -128,25 +158,36 @@ both_na = function(vec1, vec2){
   
   
 }
-
-vec_a = c(NA,NA,3,4,5,6, NA)
-
-vec_b = c(NA, NA, NA, 2,3,4,4)
-
-data.frame(vec_a, vec_b)
-
-is.na(vec_a) + is.na(vec_b) #equals 2 is both elements of row are NA
-
-length(vec_a) 
-
 #extract single value from 1x1 data frame: https://stackoverflow.com/questions/60864283/extract-the-single-value-from-a-1-x-1-data-frame-produced-with-dplyr-as-a-vector
 
-data.frame(vec_a, vec_b, row_num_nas = (is.na(vec_a) + is.na(vec_b))) %>% filter(row_num_nas == 2) %>%
-  summarise(N = n()) %>% as.numeric
 
+```
+
+```{r}
+
+#tseting with basic input
+vec_a = c(NA,3,4,6, NA, NA, NA, 11, NA)
+vec_b = c(NA, NA, NA,3,4, 5,NA,3,5)
 both_na(vec_a, vec_b)
 
-#find out of the number of rows that are 0 or 1 equal the length of the vectors
+
+#testing with 0 values
+vec_a = c(1,2,3,4,5,6)
+vec_b = c(64, 78, 456456, 88, 44, 29)
+both_na(vec_a, vec_b)
+
+
+#testing with 1 vector having character values
+vec_a = c(NA,NA,3,4,5,6)
+vec_b = c(NA, NA, NA, '2',3,4)
+both_na(vec_a, vec_b)
+
+
+#testing with different length vectors
+vec_a = c(NA,3,4,5,6)
+vec_b = c(NA, NA, NA, '2',3,4)
+both_na(vec_a, vec_b)
+
 ```
 
 
@@ -158,11 +199,20 @@ Exercise 1 or Exercise 2).
 
 ```{r}
 #| label: function-from-lab-2
-library(tidyverse)
-
 
 impute_missing = function(df, ..., impute_fun = mean) {
-  #add conditionals to make sure ... is a numeric variable
+
+  # Check for non-character columns (from live code functions.qmd)
+  character <- df %>%
+    select(...) %>%
+    map_lgl(~ (is.character(.x) | is.factor(.x))) %>%
+    keep(identity) %>%
+    names()
+  
+  if (length(character) > 0) {
+    stop("The following columns are characters: ",
+         str_c(character, collapse = ", "))
+  }
   
   newdf = df %>% 
     mutate(across(c(...), ~ replace_na(data = .x, 
@@ -170,42 +220,41 @@ impute_missing = function(df, ..., impute_fun = mean) {
   return(newdf)
 
 }
+```
 
-apple1 = impute_missing(nycflights13::flights, 
-               arr_delay, 
-               dep_delay) 
+```{r}
 
-apple2 = impute_missing(nycflights13::flights, 
-               arr_delay, 
-               carrier)
+#testing with 1 numeric column
+mean(nycflights13::flights$arr_delay, na.rm = TRUE)
 
-apple3 = impute_missing(nycflights13::flights, 
-               arr_delay, 
-               dep_delay, 
-               impute_fun = median)
+test1 = impute_missing(nycflights13::flights, 
+               arr_delay)
+
+table(test1$arr_delay)
 
 
-table(apple1$dep_delay)
-table(apple3$dep_delay)
+#testing with non-default function
+median(nycflights13::flights$arr_delay, na.rm = TRUE)
+
+test2 = impute_missing(nycflights13::flights, 
+               arr_delay, impute_fun = median)
+
+table(test2$arr_delay)
 
 
-sum(is.na(apple$arr_delay))
+#testing with 2 numeric columns
+test3 = impute_missing(nycflights13::flights, 
+               arr_delay, dep_delay)
 
-sum(is.na(apple$dep_delay))
-
-mean(apple1$dep_delay)
-median(apple3$dep_delay)
-
-var(nycflights13::flights$dep_delay, na.rm = TRUE)
-
-sum(is.na(nycflights13::flights$dep_delay))
+table(test3$arr_delay)
+table(test3$dep_delay)
 
 
-iris %>%
-  summarise(across(starts_with("Sepal"), ~ mean(.x, na.rm = TRUE)))
+#testing with character column input
+impute_missing(nycflights13::flights,carrier)
 
-test = c(1, NA, 4, 5)
-replace_na(data = test, replace = mean(test, na.rm = TRUE))
+impute_missing(nycflights13::flights, 
+               arr_delay, dep_delay, carrier)
 
 
 ```
@@ -220,25 +269,24 @@ were cancelled (i.e. `is.na(arr_time)`) or delayed by more than an hour.
 #| label: question-6
 
 filter_severe = function(df = nycflights13::flights){
-  #find all flights cancelled or delayed by more than one hour
-  #departure time delayed more than one hour (dep_delay > 60)
   
+  
+  if ('dep_delay' %in% colnames(df) == FALSE | 'arr_time' %in% colnames(df) == FALSE){
+    stop("Dataset provided does not have desired column names")
+  }
   
   return(df %>% filter(is.na(arr_time) == TRUE | dep_delay > 60))
-  
-  
 }
+```
 
+```{r}
 
-nycflights13::flights %>% filter(dep_delay > 60)
-
-
-nycflights13::flights %>% filter(is.na(arr_time) == TRUE)
-
-
+#testing for normal inputs
 filter_severe(nycflights13::flights)
 
 
+#testing for unexpected dataframe
+filter_severe(mpg)
 
 ```
 
@@ -259,9 +307,17 @@ summarize_severe = function(df = nycflights13::flights){
   return(filter_severe(df) %>% summarise(N = n()))
   
 }
+```
 
+```{r}
+
+tset_df = data.frame(Variance = var(num_vec, na.rm = TRUE), 
+                      Skewness = skewness(num_vec, na.rm = TRUE))
 
 summarize_severe(nycflights13::flights)
+
+
+summarize_severe(mpg)
 
 ```
 
@@ -273,17 +329,32 @@ cancelled or delayed.
 #| label: question-8
 
 filter_severe = function(df = nycflights13::flights, hours = 1){
-  #find all flights cancelled or delayed by more than one hour
-  #departure time delayed more than one hour (dep_delay > 60)
+  if ('dep_delay' %in% colnames(df) == FALSE | 'arr_time' %in% colnames(df) == FALSE){
+    stop("Dataset provided does not have desired column names")
+  }
+  
+  if (class(hours) != 'numeric'){
+    stop("Please provide a numeric qunaitity for delay hours")
+  }
   
   
   return(df %>% filter(is.na(arr_time) == TRUE | dep_delay > hours * 60))
   
   
 }
+```
 
+```{r}
+#testing for normal inputs
 filter_severe(nycflights13::flights, 1)
+filter_severe(nycflights13::flights, 10)
 
+#testing for non-numeric delay
+filter_severe(nycflights13::flights, '1')
+
+
+#testing for unexpected dataframe
+filter_severe(mpg, 4)
 
 ```
 
@@ -294,25 +365,34 @@ weather to compute the minimum, mean, and maximum, of a user supplied variable.
 #| label: question-9
 
 summarize_weather = function(df = nycflights13::flights, num_var){
-  #supply min, mean, max of supplied variable of a data frame
   #make sure variable is numeric
   
   #make sure variable is numeric
   
+  if ({{num_var}} %in% colnames(df) == FALSE){
+    stop("Dataset provided does not have desired column names")
+  }
   
-  #return(df %>% select(...) %>% 
-  #summarise(Minimum = min(..., na.rm = TRUE),
-   #         Mean = mean(..., na.rm = TRUE),
-    #        Maximum = max(..., na.rm = TRUE)))
+  
+  if (class({{num_var}}) != 'numeric'){
+    stop("Please provide a numeric variable to summarize")
+  }
+  
   
   return(df %>% select({{num_var}}) %>%
             summarise(Minimum = min({{num_var}}, na.rm = TRUE),
             Mean = mean({{num_var}}, na.rm = TRUE),
             Maximum = max({{num_var}}, na.rm = TRUE)))
+  
+```
+
+```{r}
+  
+  
 
 }
 
-summarize_weather(nycflights13::flights, dep_time)
+summarize_weather(nycflights13::flights, dep_delay)
 
 
 nycflights13::flights %>% select(dep_time) %>% 
@@ -332,16 +412,32 @@ a decimal time (i.e. hours + (minutes / 60)).
 standardize_time = function(df = nycflights13::flights, time_var){
   #user supplied variable that uses clock time into decimal time
   
+  return(class({{df$time_var}}))
+  
+  #if (class(time_var) %in% 
+  #    c('dep_time', 'sched_dep_time', 'arr_time', 'sched_arr_time') == FALSE){
+  #  stop("Please provide a numeric variable to summarize")
+  #}
   
   df %>% select({{time_var}}) %>% 
-    mutate(dec_time = floor({{time_var}}/100) * 60 + {{time_var}} %% 100)
+    mutate(decimal_time = floor({{time_var}}/100) * 60 + {{time_var}} %% 100)
   
   
 }
+```
 
-nycflights13::flights %>% select(dep_time) %>% mutate(new_time = dep_time %% 100, new_time2 = floor(dep_time/100),
-                                                      final_time = floor(dep_time/100) * 60 + dep_time %% 100)
+
+```{r}
 standardize_time(nycflights13::flights, dep_time)
+
+#testing a non-standard dataset
+
+
+#testing supplying a non-time column
+
+
+
+
 
 ```
 
@@ -362,7 +458,7 @@ chart
 ```{r}
 #| label: question-11
 
-library(rlang)
+
 
 sorted_bars <- function(df, var, name = englue("{{ var }}")) {
   #vertical bar chart
