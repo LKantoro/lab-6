@@ -204,7 +204,11 @@ Exercise 1 or Exercise 2).
 #| label: function-from-lab-2
 
 impute_missing = function(df, ..., impute_fun = mean) {
-
+  # Check to verify function input is a function
+  if (!is.function(impute_fun)) {
+    stop("The input for `impute_fun` must be a function.")
+  }
+  
   # Check for non-character columns (from live code functions.qmd)
   character <- df %>%
     select(...) %>%
@@ -216,6 +220,9 @@ impute_missing = function(df, ..., impute_fun = mean) {
     stop("The following columns are characters: ",
          str_c(character, collapse = ", "))
   }
+  
+  
+  
   
   newdf = df %>% 
     mutate(across(c(...), ~ replace_na(data = .x, 
@@ -260,6 +267,9 @@ impute_missing(nycflights13::flights,
                arr_delay, dep_delay, carrier)
 
 
+#testing with non-real impute function
+impute_missing(nycflights13::flights, dep_delay, impute_fun = apple)
+
 ```
 
 For Questions 6 - 10 you will write different functions which work with data 
@@ -274,7 +284,8 @@ were cancelled (i.e. `is.na(arr_time)`) or delayed by more than an hour.
 filter_severe = function(df = nycflights13::flights){
   
   
-  if ('dep_delay' %in% colnames(df) == FALSE | 'arr_time' %in% colnames(df) == FALSE){
+  if ('dep_delay' %in% colnames(df) == FALSE | 
+      'arr_time' %in% colnames(df) == FALSE){
     stop("Dataset provided does not have desired column names")
   }
   
@@ -314,13 +325,14 @@ summarize_severe = function(df = nycflights13::flights){
 
 ```{r}
 
-tset_df = data.frame(Variance = var(num_vec, na.rm = TRUE), 
-                      Skewness = skewness(num_vec, na.rm = TRUE))
-
+#testing expected input
 summarize_severe(nycflights13::flights)
 
 
+#testing function without necessary columns
 summarize_severe(mpg)
+
+
 
 ```
 
@@ -370,19 +382,12 @@ weather to compute the minimum, mean, and maximum, of a user supplied variable.
 summarize_weather = function(df = nycflights13::flights, num_var){
   #make sure variable is numeric
   
-
-  #if ({{num_var}} %in% colnames(df) == FALSE){
-  #  stop("Dataset provided does not have desired column names")
-  #}
-  
-  
-  #if (class(df %>% select({{num_var}})) != 'numeric'){
-  #  stop("Please provide a numeric variable to summarize")
-  #}
+  if (length(df %>% select({{num_var}}) %>% 
+             purrr::discard(~!is.numeric(.))) == 0){
+    stop('Please provide a numeric variable')
+  }
   
 
-  return(class(df))
-  
   
   return(df %>% select({{num_var}}) %>%
             summarise(Minimum = min({{num_var}}, na.rm = TRUE),
@@ -399,34 +404,6 @@ summarize_weather(nycflights13::flights, dep_time)
 
 #testing with non-numeric column
 summarize_weather(nycflights13::flights, carrier)
-
-
-#testing with data frame not similar to flights
-summarize_weather(mpg, dep_time)
-
-
-df %>%
-    select(dep_time) %>%
-    map_lgl(~ (is.character(dep_time) | is.factor(dep_time))) %>%
-    keep(identity) %>%
-    names()
-
-
-nycflights13::flights %>% select(dep_time) %>% 
-  summarise(Minimum = min(dep_time, na.rm = TRUE),
-            Mean = mean(dep_time, na.rm = TRUE),
-            Maximum = max(dep_time, na.rm = TRUE))
-
-
-character <- df %>%
-    select(...) %>%
-    map_lgl(~ (is.character(.x) | is.factor(.x))) %>%
-    keep(identity) %>%
-    names()
-
-
-
-
 ```
 
 **Question 10:** Write a `standardize_time()` function that converts the user
@@ -443,7 +420,7 @@ standardize_time = function(df = nycflights13::flights, time_var){
   
   #if (class(time_var) %in% 
   #    c('dep_time', 'sched_dep_time', 'arr_time', 'sched_arr_time') == FALSE){
-  #  stop("Please provide a numeric variable to summarize")
+  #  stop("Please provide a clock time variable to summarize")
   #}
   
   df %>% select({{time_var}}) %>% 
@@ -487,43 +464,32 @@ chart
 ```{r}
 #| label: question-11
 
-
-
 sorted_bars <- function(df, var, name = englue("{{ var }}")) {
-  #vertical bar chart
   
-  
+  if (length(df %>% select({{var}}) %>% purrr::discard(~is.numeric(.))) == 0){
+    stop('Please provide a categorical variable')
+  }
   
   
   return(df %>% mutate({{var}} := fct_infreq({{var}})) %>% 
-    ggplot(aes(x = {{var}})) + ggtitle(paste("Distribution of", {name})) + 
+    ggplot(aes(x = {{var}})) + ggtitle(paste("Distribution of", {name}, "(decreasing)")) + 
     geom_bar())
   
 }  
 ```
 
 ```{r}
-  
+#keeping only numeric variables
+#https://stackoverflow.com/questions/5863097/selecting-only-numeric-columns-from-a-data-frame
+
 #testing using a expected input
 sorted_bars(nycflights13::flights, carrier)
 
+sorted_bars(mpg, trans)
+
 
 #testing using a numeric variable
-
-nycflights13::flights %>% mutate(carrier = fct_infreq(carrier))
-
-
-class(nycflights13::flights$carrier)
-
-class(nycflights13::flights$arr_time)
-
-
-nycflights13::flights %>% select(dep_time)
-
-#keeping only numeric variables
-#https://stackoverflow.com/questions/5863097/selecting-only-numeric-columns-from-a-data-frame
-  
-'carrier' %in% nycflights13::flights %>% purrr::discard(~!is.numeric(.)) %>% names
+sorted_bars(nycflights13::flights, dep_delay)
 
 ```
 
