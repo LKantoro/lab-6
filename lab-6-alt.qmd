@@ -77,7 +77,7 @@ computes the age of each person in years.
 age_in_years = function(date_vect) {
   return(date_vect)
   
-  
+  #calculate year difference, then round down
   
 }
 
@@ -93,6 +93,8 @@ class(banana)
 age_in_years(c(banana))
 year(banana)
 
+date()
+difftime(date(), date())
 ```
 
 **Question 3:** Write a function that computes the variance and skewness of a
@@ -320,7 +322,8 @@ summarize_severe = function(df = nycflights13::flights){
   
   return(filter_severe(df) %>% 
            summarise(Cancelled = sum(is.na(arr_time)),
-                                         Delayed = sum(dep_time > 60, na.rm = TRUE)))
+                                         Delayed = sum(dep_time > 60, 
+                                                       na.rm = TRUE)))
   
 }
 ```
@@ -344,7 +347,8 @@ cancelled or delayed.
 #| label: question-8
 
 filter_severe = function(df = nycflights13::flights, hours = 1){
-  if ('dep_delay' %in% colnames(df) == FALSE | 'arr_time' %in% colnames(df) == FALSE){
+  if ('dep_delay' %in% colnames(df) == FALSE | 
+      'arr_time' %in% colnames(df) == FALSE){
     stop("Dataset provided does not have desired column names")
   }
   
@@ -456,15 +460,19 @@ chart
 ```{r}
 #| label: question-11
 
-sorted_bars <- function(df, var, name = englue("{{ var }}")) {
+sorted_bars <- function(df, var) {
   
+  #checking to make sure input variable is categorical
   if (length(df %>% select({{var}}) %>% purrr::discard(~is.numeric(.))) == 0){
     stop('Please provide a categorical variable')
   }
   
+  #creating name object for label purposes
+  name = englue("{{ var }}")
   
   return(df %>% mutate({{var}} := fct_infreq({{var}})) %>% 
-    ggplot(aes(x = {{var}})) + ggtitle(paste("Distribution of", {name}, "(decreasing)")) + 
+    ggplot(aes(x = {{var}})) + 
+    ggtitle(paste("Distribution of", name, "(decreasing)")) + 
     geom_bar())
   
 }  
@@ -476,7 +484,6 @@ sorted_bars <- function(df, var, name = englue("{{ var }}")) {
 
 #testing using a expected input
 sorted_bars(nycflights13::flights, carrier)
-
 sorted_bars(mpg, trans)
 
 
@@ -494,12 +501,10 @@ dataset (built into `ggplot2`).
 
 ```{r}
 #| label: question-12
-
 sorted_bars(mpg, model)
 
 ggplot2::mpg %>% purrr::discard(~is.numeric(.)) %>% names
 
-c("manufacturer", "model")
 ```
 
 
@@ -509,9 +514,61 @@ mpg %>%
 
 map(sorted_bars(mpg, c(manufacturer, model)))
 
-df %>% 
-    mutate(across(c(year, cyl), ~ replace_na(data = .x, 
-                                       replace = 5)))
+
+
+
+mpg %>% select(where(is.character)) %>% map(~sorted_bars(df = mpg, .x))
+
+
+
+mpg %>% select(model) %>% map(~sorted_bars(df = mpg, var = .x))
+
+
+
+
+map(mpg %>% select(model), \(x) sorted_bars(df = mpg, var == {{ x }}))
+
+mpg %>% select(where(is.character)) %>% map(~sorted_bars(df = mpg, var = .x))
+
+#https://www.tidyverse.org/blog/2023/05/purrr-walk-this-way/
+```
+
+
+```{r}
+# get the levels
+cuts <- levels(diamonds$cut)
+
+# make the plots
+plots <- map(
+  cuts,
+  \(x) conditional_bars(
+    df = diamonds,
+    cut == {{ x }},
+    clarity
+    )
+)
+```
+
+
+
+```{r}
+#https://stackoverflow.com/questions/76807848/use-map-function-to-create-multiple-plots-in-r
+
+make_plot <- function(data, var)  {
+  data %>% 
+    ggplot() +                                                    
+    aes(x = category, y = !!as.symbol(var), color = category) + 
+  geom_boxplot(width = 0.2, notch = FALSE, position = position_dodge(1), lwd = 1.8, outlier.shape = NA)
+}
+
+mydf <- data.frame("category" = as.factor(sample(c("type1", "type2"), 10, replace = TRUE)),
+                   "var1" = runif(10, min = 0, max = 100),
+                   "var2" = runif(10, min = 50, max = 150))
+
+vars <- c("var1", "var2")
+plots <- map(vars, ~ make_plot(mydf, .x))
+
+plots
 ```
 
 
@@ -524,8 +581,17 @@ map(means, rnorm, n = 5)
 #new way
 map(means, \(m) rnorm(5, m))
 
+g <- function(var) englue("{{ var }}")
+g(cyl)
+g(1 + 1)
+g(!!letters)
 
-mpg %>% map(c(year), \(m) rnorm(2, m))
+# These are equivalent to
+as_label(quote(cyl))
+as_label(quote(1 + 1))
+as_label(letters)
+
+
 ```
 
 
