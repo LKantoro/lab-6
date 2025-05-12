@@ -318,7 +318,9 @@ summarize_severe = function(df = nycflights13::flights){
   #two separate counts
   
   
-  return(filter_severe(df) %>% summarise(N = n()))
+  return(filter_severe(df) %>% 
+           summarise(Cancelled = sum(is.na(arr_time)),
+                                         Delayed = sum(dep_time > 60, na.rm = TRUE)))
   
 }
 ```
@@ -331,8 +333,6 @@ summarize_severe(nycflights13::flights)
 
 #testing function without necessary columns
 summarize_severe(mpg)
-
-
 
 ```
 
@@ -416,15 +416,14 @@ a decimal time (i.e. hours + (minutes / 60)).
 standardize_time = function(df = nycflights13::flights, time_var){
   #user supplied variable that uses clock time into decimal time
   
-  return(class({{df$time_var}}))
+
+  if ('time_var' %in% 
+      c('dep_time', 'sched_dep_time', 'arr_time', 'sched_arr_time') == FALSE){
+    stop("Please provide a clock time variable to summarize")
+  }
   
-  #if (class(time_var) %in% 
-  #    c('dep_time', 'sched_dep_time', 'arr_time', 'sched_arr_time') == FALSE){
-  #  stop("Please provide a clock time variable to summarize")
-  #}
-  
-  df %>% select({{time_var}}) %>% 
-    mutate(decimal_time = floor({{time_var}}/100) * 60 + {{time_var}} %% 100)
+  return(df %>% select({{time_var}}) %>% 
+    mutate(decimal_time = floor({{time_var}}/100) * 60 + {{time_var}} %% 100))
   
   
 }
@@ -432,19 +431,12 @@ standardize_time = function(df = nycflights13::flights, time_var){
 
 
 ```{r}
-
 #testing using expected input
-standardize_time(nycflights13::flights, dep_time)
-
-#testing a non-standard dataset
+standardize_time(nycflights13::flights, arr_time)
 
 
 #testing supplying a non-time column
-
-
-
-
-
+standardize_time(nycflights13::flights, day)
 ```
 
 # Plotting Functions
@@ -503,12 +495,39 @@ dataset (built into `ggplot2`).
 ```{r}
 #| label: question-12
 
-ggplot2::mpg
+sorted_bars(mpg, model)
 
+ggplot2::mpg %>% purrr::discard(~is.numeric(.)) %>% names
 
-
-
+c("manufacturer", "model")
 ```
+
+
+```{r}
+mpg %>% 
+    mutate(across(c(year, cyl), ~map()))
+
+map(sorted_bars(mpg, c(manufacturer, model)))
+
+df %>% 
+    mutate(across(c(year, cyl), ~ replace_na(data = .x, 
+                                       replace = 5)))
+```
+
+
+```{r}
+means = c(1,10,20,50)
+
+#old way
+map(means, rnorm, n = 5)
+
+#new way
+map(means, \(m) rnorm(5, m))
+
+
+mpg %>% map(c(year), \(m) rnorm(2, m))
+```
+
 
 # Contributing to the R for Data Science Community!
 
