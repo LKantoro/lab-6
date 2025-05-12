@@ -1,7 +1,10 @@
 ---
 title: "Lab 6 - Alternative"
 subtitle: "Contributing to R for Data Science"
+auther: Lucas Kantorowski
 editor: source
+error: true
+warning: false
 ---
 
 The exercises from the functions below were pulled from the newest version of
@@ -367,38 +370,62 @@ weather to compute the minimum, mean, and maximum, of a user supplied variable.
 summarize_weather = function(df = nycflights13::flights, num_var){
   #make sure variable is numeric
   
-  #make sure variable is numeric
+
+  #if ({{num_var}} %in% colnames(df) == FALSE){
+  #  stop("Dataset provided does not have desired column names")
+  #}
   
-  if ({{num_var}} %in% colnames(df) == FALSE){
-    stop("Dataset provided does not have desired column names")
-  }
   
+  #if (class(df %>% select({{num_var}})) != 'numeric'){
+  #  stop("Please provide a numeric variable to summarize")
+  #}
   
-  if (class({{num_var}}) != 'numeric'){
-    stop("Please provide a numeric variable to summarize")
-  }
+
+  return(class(df))
   
   
   return(df %>% select({{num_var}}) %>%
             summarise(Minimum = min({{num_var}}, na.rm = TRUE),
             Mean = mean({{num_var}}, na.rm = TRUE),
             Maximum = max({{num_var}}, na.rm = TRUE)))
-  
+}  
 ```
 
 ```{r}
   
-  
+#testing with normal input
+summarize_weather(nycflights13::flights, dep_time)
 
-}
 
-summarize_weather(nycflights13::flights, dep_delay)
+#testing with non-numeric column
+summarize_weather(nycflights13::flights, carrier)
+
+
+#testing with data frame not similar to flights
+summarize_weather(mpg, dep_time)
+
+
+df %>%
+    select(dep_time) %>%
+    map_lgl(~ (is.character(dep_time) | is.factor(dep_time))) %>%
+    keep(identity) %>%
+    names()
 
 
 nycflights13::flights %>% select(dep_time) %>% 
   summarise(Minimum = min(dep_time, na.rm = TRUE),
             Mean = mean(dep_time, na.rm = TRUE),
             Maximum = max(dep_time, na.rm = TRUE))
+
+
+character <- df %>%
+    select(...) %>%
+    map_lgl(~ (is.character(.x) | is.factor(.x))) %>%
+    keep(identity) %>%
+    names()
+
+
+
 
 ```
 
@@ -428,6 +455,8 @@ standardize_time = function(df = nycflights13::flights, time_var){
 
 
 ```{r}
+
+#testing using expected input
 standardize_time(nycflights13::flights, dep_time)
 
 #testing a non-standard dataset
@@ -462,22 +491,24 @@ chart
 
 sorted_bars <- function(df, var, name = englue("{{ var }}")) {
   #vertical bar chart
-  #if (class({{var}}) == "character") {
-  #  return(TRUE)
-  #}
+  
+  
+  
   
   return(df %>% mutate({{var}} := fct_infreq({{var}})) %>% 
     ggplot(aes(x = {{var}})) + ggtitle(paste("Distribution of", {name})) + 
     geom_bar())
   
 }  
+```
+
+```{r}
   
-  
-
-
-
+#testing using a expected input
 sorted_bars(nycflights13::flights, carrier)
 
+
+#testing using a numeric variable
 
 nycflights13::flights %>% mutate(carrier = fct_infreq(carrier))
 
@@ -485,6 +516,14 @@ nycflights13::flights %>% mutate(carrier = fct_infreq(carrier))
 class(nycflights13::flights$carrier)
 
 class(nycflights13::flights$arr_time)
+
+
+nycflights13::flights %>% select(dep_time)
+
+#keeping only numeric variables
+#https://stackoverflow.com/questions/5863097/selecting-only-numeric-columns-from-a-data-frame
+  
+'carrier' %in% nycflights13::flights %>% purrr::discard(~!is.numeric(.)) %>% names
 
 ```
 
