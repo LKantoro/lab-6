@@ -1,7 +1,7 @@
 ---
 title: "Lab 6 - Alternative"
 subtitle: "Contributing to R for Data Science"
-auther: Lucas Kantorowski
+author: "Lucas Kantorowski"
 editor: source
 error: true
 warning: false
@@ -16,7 +16,7 @@ textbook, with the option of submitting a pull request to the
 
 ```{r}
 #| label: load_libraries
-
+library(lubridate)
 library(dplyr)
 library('e1071')
 library(tidyverse)
@@ -75,27 +75,38 @@ computes the age of each person in years.
 ```{r}
 #| label: question-2
 
+#using time_length function from lubridate package
+#https://stackoverflow.com/questions/15569333/get-date-difference-in-years-floating-point
+
 age_in_years = function(date_vect) {
-  return(date_vect)
+  #accounting fro if birthday vector is already provided in date format
+  if (class(date_vect) == "Date") {
+    return(time_length(difftime(Sys.Date(), date_vect), "years"))
+  }
   
-  #calculate year difference, then round down
-  
+  #calculate year difference between today and vector value
+  return(time_length(difftime(Sys.Date(), as.Date(date_vect)), "years"))
+
 }
+```
 
-apple = c("01/01/2000", "10/23/2001")
-class(apple)
-apple
+```{r}
 
-banana = as.Date(apple, format = "%m/%d/%yy")
-banana
+#testing with expected input
+age_in_years(c("2001-01-01", "2021-01-30", "2013-08-20"))
 
-class(apple)
-class(banana)
-age_in_years(c(banana))
-year(banana)
 
-date()
-difftime(date(), date())
+#testing with alternate date format
+age_in_years(c("01/01/2001", "2021/01/30"))
+
+
+#testing with alternate, unclear date format
+age_in_years(c("01/30/2001", "2021/01/30"))
+
+
+#testing with vector already in date format
+age_in_years(as.Date(c("01/01/2001", "2021/01/30"))
+)
 ```
 
 **Question 3:** Write a function that computes the variance and skewness of a
@@ -114,7 +125,6 @@ variance_and_skewness = function(num_vec){
   v_s_df = data.frame(Variance = var(num_vec, na.rm = TRUE), 
                       Skewness = skewness(num_vec, na.rm = TRUE))
   
-  #return(var(num_vec), skewness(num_vec))
   return(v_s_df)
 }
 ```
@@ -287,7 +297,7 @@ were cancelled (i.e. `is.na(arr_time)`) or delayed by more than an hour.
 
 filter_severe = function(df = nycflights13::flights){
   
-  
+  #making sure dataset is similar to the flights data in format
   if ('dep_delay' %in% colnames(df) == FALSE | 
       'arr_time' %in% colnames(df) == FALSE){
     stop("Dataset provided does not have desired column names")
@@ -345,19 +355,18 @@ cancelled or delayed.
 #| label: question-8
 
 filter_severe = function(df = nycflights13::flights, hours = 1){
+  #making sure dataset is similar in format to flights dataset
   if ('dep_delay' %in% colnames(df) == FALSE | 
       'arr_time' %in% colnames(df) == FALSE){
     stop("Dataset provided does not have desired column names")
   }
   
+  #making sure a numeric argument is used for hours
   if (class(hours) != 'numeric'){
     stop("Please provide a numeric qunaitity for delay hours")
   }
   
-  
   return(df %>% filter(is.na(arr_time) == TRUE | dep_delay > hours * 60))
-  
-  
 }
 ```
 
@@ -383,13 +392,10 @@ weather to compute the minimum, mean, and maximum, of a user supplied variable.
 
 summarize_weather = function(df = nycflights13::flights, num_var){
   #make sure variable is numeric
-  
   if (length(df %>% select({{num_var}}) %>% 
              purrr::discard(~!is.numeric(.))) == 0){
     stop('Please provide a numeric variable')
   }
-  
-
   
   return(df %>% select({{num_var}}) %>%
             summarise(Minimum = min({{num_var}}, na.rm = TRUE),
@@ -518,7 +524,8 @@ unsorted_bars <- function(df, var) {
 
 ```{r}
 #barplots on all categorical variables of mpg
-mpg %>% purrr::discard(~is.numeric(.)) %>% names() %>% map(~unsorted_bars(df = mpg, var = .data[[.x]]))
+mpg %>% purrr::discard(~is.numeric(.)) %>% 
+  names() %>% map(~unsorted_bars(df = mpg, var = .data[[.x]]))
 
 #use of .data[[.x]]
 #https://stackoverflow.com/questions/60305159/tunnel-data-variables-through-env-variable-with-operator
