@@ -5,6 +5,7 @@ auther: Lucas Kantorowski
 editor: source
 error: true
 warning: false
+eval: false
 ---
 
 The exercises from the functions below were pulled from the newest version of
@@ -142,7 +143,6 @@ vectors.
 ```{r}
 both_na = function(vec1, vec2){
   
-  
   #checking if columns are same length
   if (length(vec1) != length(vec2)) {
     stop("The provided vectors are not the same length")
@@ -170,7 +170,7 @@ both_na = function(vec1, vec2){
 
 ```{r}
 
-#tseting with basic input
+#testing with basic input
 vec_a = c(NA,3,4,6, NA, NA, NA, 11, NA)
 vec_b = c(NA, NA, NA,3,4, 5,NA,3,5)
 both_na(vec_a, vec_b)
@@ -222,10 +222,7 @@ impute_missing = function(df, ..., impute_fun = mean) {
     stop("The following columns are characters: ",
          str_c(character, collapse = ", "))
   }
-  
-  
-  
-  
+
   newdf = df %>% 
     mutate(across(c(...), ~ replace_na(data = .x, 
                                        replace = impute_fun(.x, na.rm = TRUE))))
@@ -242,7 +239,8 @@ mean(nycflights13::flights$arr_delay, na.rm = TRUE)
 test1 = impute_missing(nycflights13::flights, 
                arr_delay)
 
-table(test1$arr_delay)
+test1 %>% select(arr_delay) %>% group_by(arr_delay) %>% 
+  summarise(N = n()) %>% arrange(desc(N)) %>% slice_head(n = 10)
 
 
 #testing with non-default function
@@ -251,15 +249,19 @@ median(nycflights13::flights$arr_delay, na.rm = TRUE)
 test2 = impute_missing(nycflights13::flights, 
                arr_delay, impute_fun = median)
 
-table(test2$arr_delay)
+test2 %>% select(arr_delay) %>% group_by(arr_delay) %>% 
+  summarise(N = n()) %>% arrange(desc(N)) %>% slice_head(n = 10)
 
 
 #testing with 2 numeric columns
 test3 = impute_missing(nycflights13::flights, 
                arr_delay, dep_delay)
 
-table(test3$arr_delay)
-table(test3$dep_delay)
+test3 %>% select(arr_delay) %>% group_by(arr_delay) %>% 
+  summarise(N = n()) %>% arrange(desc(N)) %>% slice_head(n = 10)
+
+test3 %>% select(dep_delay) %>% group_by(dep_delay) %>% 
+  summarise(N = n()) %>% arrange(desc(N)) %>% slice_head(n = 10)
 
 
 #testing with character column input
@@ -313,18 +315,14 @@ cancelled flights and the number of flights delayed by more than an hour.
 #| label: question-7
 
 summarize_severe = function(df = nycflights13::flights){
-  #use previous function
-  
-  #count number of cancelled flights
-  #count number of delayed flights by more than one hour
-  #two separate counts
-  
+  #using previous function
+  #counting number of cancelled flights
+  #counting number of delayed flights by more than one hour
   
   return(filter_severe(df) %>% 
            summarise(Cancelled = sum(is.na(arr_time)),
                                          Delayed = sum(dep_time > 60, 
                                                        na.rm = TRUE)))
-  
 }
 ```
 
@@ -419,17 +417,13 @@ a decimal time (i.e. hours + (minutes / 60)).
 
 standardize_time = function(df = nycflights13::flights, time_var){
   #user supplied variable that uses clock time into decimal time
-  
-
-  if ('time_var' %in% 
+  if (englue('{{time_var}}') %in% 
       c('dep_time', 'sched_dep_time', 'arr_time', 'sched_arr_time') == FALSE){
     stop("Please provide a clock time variable to summarize")
   }
   
-  return(df %>% select({{time_var}}) %>% 
-    mutate(decimal_time = floor({{time_var}}/100) * 60 + {{time_var}} %% 100))
-  
-  
+  return(df %>% 
+    mutate({{time_var}} := floor({{time_var}}/100) * 60 + {{time_var}} %% 100))
 }
 ```
 
@@ -437,7 +431,7 @@ standardize_time = function(df = nycflights13::flights, time_var){
 ```{r}
 #testing using expected input
 standardize_time(nycflights13::flights, arr_time)
-
+standardize_time(nycflights13::flights, sched_dep_time)
 
 #testing supplying a non-time column
 standardize_time(nycflights13::flights, day)
@@ -470,7 +464,7 @@ sorted_bars <- function(df, var) {
   #creating name object for label purposes
   name = englue("{{ var }}")
   
-  return(df %>% mutate({{var}} := fct_infreq({{var}})) %>% 
+  return(df %>% select({{var}}) %>% mutate({{var}} := fct_infreq({{var}})) %>% 
     ggplot(aes(x = {{var}})) + 
     ggtitle(paste("Distribution of", name, "(decreasing)")) + 
     geom_bar())
@@ -501,98 +495,36 @@ dataset (built into `ggplot2`).
 
 ```{r}
 #| label: question-12
-sorted_bars(mpg, model)
 
-ggplot2::mpg %>% purrr::discard(~is.numeric(.)) %>% names
-
+#could not get sorting to work with map function
+unsorted_bars <- function(df, var) {
+  
+  #checking to make sure input variable is categorical
+  if (length(df %>% select({{var}}) %>% purrr::discard(~is.numeric(.))) == 0){
+    stop('Please provide a categorical variable')
+  }
+  
+  #creating name object for label purposes
+  name = englue("{{ var }}")
+  
+  return(df %>% select({{var}}) %>% 
+    ggplot(aes(x = {{var}})) + 
+    ggtitle(paste("Distribution of", name, "(decreasing)")) + 
+    geom_bar())
+  
+}  
 ```
 
 
 ```{r}
-mpg %>% 
-    mutate(across(c(year, cyl), ~map()))
+#barplots on all categorical variables of mpg
+mpg %>% purrr::discard(~is.numeric(.)) %>% names() %>% map(~unsorted_bars(df = mpg, var = .data[[.x]]))
 
-map(sorted_bars(mpg, c(manufacturer, model)))
-
-
-
-
-mpg %>% select(where(is.character)) %>% map(~sorted_bars(df = mpg, .x))
-
-
-
-mpg %>% select(model) %>% map(~sorted_bars(df = mpg, var = .x))
-
-
-
-
-map(mpg %>% select(model), \(x) sorted_bars(df = mpg, var == {{ x }}))
-
-mpg %>% select(where(is.character)) %>% map(~sorted_bars(df = mpg, var = .x))
-
-#https://www.tidyverse.org/blog/2023/05/purrr-walk-this-way/
-```
-
-
-```{r}
-# get the levels
-cuts <- levels(diamonds$cut)
-
-# make the plots
-plots <- map(
-  cuts,
-  \(x) conditional_bars(
-    df = diamonds,
-    cut == {{ x }},
-    clarity
-    )
-)
-```
-
-
-
-```{r}
-#https://stackoverflow.com/questions/76807848/use-map-function-to-create-multiple-plots-in-r
-
-make_plot <- function(data, var)  {
-  data %>% 
-    ggplot() +                                                    
-    aes(x = category, y = !!as.symbol(var), color = category) + 
-  geom_boxplot(width = 0.2, notch = FALSE, position = position_dodge(1), lwd = 1.8, outlier.shape = NA)
-}
-
-mydf <- data.frame("category" = as.factor(sample(c("type1", "type2"), 10, replace = TRUE)),
-                   "var1" = runif(10, min = 0, max = 100),
-                   "var2" = runif(10, min = 50, max = 150))
-
-vars <- c("var1", "var2")
-plots <- map(vars, ~ make_plot(mydf, .x))
-
-plots
-```
-
-
-```{r}
-means = c(1,10,20,50)
-
-#old way
-map(means, rnorm, n = 5)
-
-#new way
-map(means, \(m) rnorm(5, m))
-
-g <- function(var) englue("{{ var }}")
-g(cyl)
-g(1 + 1)
-g(!!letters)
-
-# These are equivalent to
-as_label(quote(cyl))
-as_label(quote(1 + 1))
-as_label(letters)
-
+#use of .data[[.x]]
+#https://stackoverflow.com/questions/60305159/tunnel-data-variables-through-env-variable-with-operator
 
 ```
+
 
 
 # Contributing to the R for Data Science Community!
